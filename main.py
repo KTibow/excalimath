@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+# /// script
+# dependencies = ["fonttools", "brotli"]
+# ///
 """
 Add SVG glyphs to a font file, converting from SVG paths to TrueType outlines.
 """
@@ -174,7 +176,8 @@ if __name__ == "__main__":
     svg_data_list = [
         ["new_cup.svg", "cup", "222A", 600, 0],  # Using explicit advance width
         ["element_of_3.svg", "element_of", "2208", 600, 0],
-        ["new_infinity.svg", "infinity", "221E", 600, 0]
+        ["new_infinity.svg", "infinity", "221E", 600, 0],
+        ["new_angle.svg", "angle", "2220", 600, 0]
     ]
 
     # Run the conversion
