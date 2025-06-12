@@ -31,7 +31,7 @@ def get_svg_viewbox(svg_content):
             pass
     return None
 
-def calculate_transform(svg_content, units_per_em, advance_width, special_x):
+def calculate_transform(svg_content, units_per_em, advance_width, special_x, is_combining=False):
     """Calculate transformation matrix to scale SVG to font units with proper alignment"""
     viewbox = get_svg_viewbox(svg_content)
 
@@ -50,18 +50,30 @@ def calculate_transform(svg_content, units_per_em, advance_width, special_x):
         translate_x = (advance_width - width) / 2 - x + special_x
         translate_x *= scale_factor
 
-        # Vertical alignment - center at mathematical axis (approximately 0.45-0.5 of em square)
-        math_axis = units_per_em * 0.3  # Mathematical axis height
-        svg_center_y = y + height / 2
-        translate_y = math_axis - svg_center_y * (-scale_factor)  # Adjust for Y-flip
+        if is_combining:
+            # For combining characters, position above the baseline
+            # Position at cap height or slightly above
+            cap_height = units_per_em * 0.7  # Approximate cap height
+            translate_y = cap_height + (height * scale_factor / 2)
+            # Center horizontally around zero for combining marks
+            translate_x = -width * scale_factor / 2 - x * scale_factor
+        else:
+            # Vertical alignment - center at mathematical axis (approximately 0.45-0.5 of em square)
+            math_axis = units_per_em * 0.3  # Mathematical axis height
+            svg_center_y = y + height / 2
+            translate_y = math_axis - svg_center_y * (-scale_factor)  # Adjust for Y-flip
 
         # Transform matrix: [scale_x, 0, 0, scale_y, translate_x, translate_y]
         return Transform(scale_factor, 0, 0, -scale_factor, translate_x, translate_y)
 
     # Default transform for SVGs without viewBox
     scale = 0.7 * units_per_em / 1000  # Assuming 1000x1000 SVG coordinate space
-    translate_x = (advance_width - 700) / 2  # Center in advance width
-    translate_y = units_per_em * 0.45  # Position at math axis
+    if is_combining:
+        translate_x = -350  # Center around zero for combining marks
+        translate_y = units_per_em * 0.8  # Position above baseline
+    else:
+        translate_x = (advance_width - 700) / 2  # Center in advance width
+        translate_y = units_per_em * 0.45  # Position at math axis
     return Transform(scale, 0, 0, -scale, translate_x, translate_y)
 
 def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
@@ -107,9 +119,20 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
             print(f"Error: SVG file {svg_file_path} not found")
             continue
 
+        # Check if this is a combining character (Unicode ranges 0300-036F, 1AB0-1AFF, 1DC0-1DFF, 20D0-20FF, FE20-FE2F)
+        unicode_int = int(unicode_hex, 16)
+        is_combining = (0x0300 <= unicode_int <= 0x036F or 
+                       0x1AB0 <= unicode_int <= 0x1AFF or
+                       0x1DC0 <= unicode_int <= 0x1DFF or
+                       0x20D0 <= unicode_int <= 0x20FF or
+                       0xFE20 <= unicode_int <= 0xFE2F)
+
         # Determine advance width if not specified
         if advance_width == 0:
-            advance_width = int(units_per_em * 0.6)  # Default 60% of em
+            if is_combining:
+                advance_width = 0  # Combining characters have zero advance width
+            else:
+                advance_width = int(units_per_em * 0.6)  # Default 60% of em
 
         # Read the SVG file as bytes to avoid encoding issues
         try:
@@ -121,7 +144,7 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
             cleaned_svg = clean_svg_content(svg_text)
 
             # Calculate transformation based on SVG viewBox and desired advance width
-            transform = calculate_transform(svg_text, units_per_em, advance_width, special_x)
+            transform = calculate_transform(svg_text, units_per_em, advance_width, special_x, is_combining)
             print(f"Using transform: {transform}")
 
             # Parse the SVG with the transformation
@@ -177,7 +200,8 @@ if __name__ == "__main__":
         ["new_cup.svg", "cup", "222A", 600, 0],  # Using explicit advance width
         ["element_of_3.svg", "element_of", "2208", 600, 0],
         ["new_infinity.svg", "infinity", "221E", 600, 0],
-        ["new_angle.svg", "angle", "2220", 600, 0]
+        ["new_angle.svg", "angle", "2220", 600, 0],
+        ["harpoon.svg", "harpoon", "20D7", 0, 0],  # Combining character - zero advance width
     ]
 
     # Run the conversion
