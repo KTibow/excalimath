@@ -121,7 +121,7 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
 
         # Check if this is a combining character (Unicode ranges 0300-036F, 1AB0-1AFF, 1DC0-1DFF, 20D0-20FF, FE20-FE2F)
         unicode_int = int(unicode_hex, 16)
-        is_combining = (0x0300 <= unicode_int <= 0x036F or 
+        is_combining = (0x0300 <= unicode_int <= 0x036F or
                        0x1AB0 <= unicode_int <= 0x1AFF or
                        0x1DC0 <= unicode_int <= 0x1DFF or
                        0x20D0 <= unicode_int <= 0x20FF or
@@ -202,6 +202,7 @@ if __name__ == "__main__":
         ["new_infinity.svg", "infinity", "221E", 600, 0],
         ["new_angle.svg", "angle", "2220", 600, 0],
         ["harpoon.svg", "harpoon", "20D7", 0, 0],  # Combining character - zero advance width
+        ["approx.svg", "approx", "2248", 600, 0],
     ]
 
     # Run the conversion
