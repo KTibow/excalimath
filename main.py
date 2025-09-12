@@ -120,11 +120,7 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
                        0xFE20 <= unicode_int <= 0xFE2F)
 
         # Determine advance width if not specified
-        if advance_width == 0:
-            if is_combining:
-                advance_width = 0  # Combining characters have zero advance width
-            else:
-                advance_width = int(units_per_em * 0.6)  # Default 60% of em
+        advance_width = int(units_per_em * advance_width)
 
         # Read the SVG file as bytes to avoid encoding issues
         try:
@@ -189,12 +185,13 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
 if __name__ == "__main__":
     # Define SVG files, glyph names, Unicode code points, and advance widths
     svg_data_list = [
-        ["new_cup.svg", "cup", "222A", 600, 0],  # Using explicit advance width
-        ["element_of_3.svg", "element_of", "2208", 600, 0],
-        ["new_infinity.svg", "infinity", "221E", 600, 0],
-        ["new_angle.svg", "angle", "2220", 600, 0],
+        ["new_cup.svg", "cup", "222A", 0.6, 0],  # Using explicit advance width
+        ["element_of_3.svg", "element_of", "2208", 0.6, 0],
+        ["new_infinity.svg", "infinity", "221E", 0.6, 0],
+        ["new_angle.svg", "angle", "2220", 0.6, 0],
         ["harpoon.svg", "harpoon", "20D7", 0, 0],  # Combining character - zero advance width
-        ["approx.svg", "approx", "2248", 600, 0],
+        ["approx.svg", "approx", "2248", 0.6, 0],
+        ["to.svg", "to", "2192", 0.66, 0],
     ]
 
     # Run the conversion
