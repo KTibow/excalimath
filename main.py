@@ -7,18 +7,21 @@ Add SVG glyphs to a font file, converting from SVG paths to TrueType outlines.
 
 import os
 import re
-from fontTools.ttLib import TTFont, newTable
-from fontTools.svgLib import SVGPath
-from fontTools.pens.ttGlyphPen import TTGlyphPen
+
 from fontTools.misc.transform import Transform
+from fontTools.pens.ttGlyphPen import TTGlyphPen
+from fontTools.svgLib import SVGPath
+from fontTools.ttLib import TTFont, newTable
+
 
 def clean_svg_content(svg_content):
     """Remove XML/encoding declarations that cause parsing issues"""
     # Remove XML declaration
-    svg_content = re.sub(r'<\?xml[^>]+\?>', '', svg_content)
+    svg_content = re.sub(r"<\?xml[^>]+\?>", "", svg_content)
     # Remove encoding attributes
-    svg_content = re.sub(r'encoding="[^"]+"', '', svg_content)
+    svg_content = re.sub(r'encoding="[^"]+"', "", svg_content)
     return svg_content
+
 
 def get_svg_viewbox(svg_content):
     """Extract viewBox from SVG to help with scaling"""
@@ -31,7 +34,10 @@ def get_svg_viewbox(svg_content):
             pass
     return None
 
-def calculate_transform(svg_content, units_per_em, advance_width, special_x, is_combining=False):
+
+def calculate_transform(
+    svg_content, units_per_em, advance_width, special_x, is_combining=False
+):
     """Calculate transformation matrix to scale SVG to font units with proper alignment"""
     viewbox = get_svg_viewbox(svg_content)
 
@@ -68,6 +74,7 @@ def calculate_transform(svg_content, units_per_em, advance_width, special_x, is_
     # Transform matrix: [scale_x, 0, 0, scale_y, translate_x, translate_y]
     return Transform(scale_factor, 0, 0, -scale_factor, translate_x, translate_y)
 
+
 def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
     """
     Add SVG glyphs to a font.
@@ -81,29 +88,39 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
     font = TTFont(input_font_path)
 
     # Get the font's units per em for scaling
-    units_per_em = font['head'].unitsPerEm
+    units_per_em = font["head"].unitsPerEm
     print(f"Font units per em: {units_per_em}")
 
     # Make sure necessary tables exist
-    if 'glyf' not in font:
-        font['glyf'] = newTable('glyf')
-        font['glyf'].glyphs = {}
-    if 'hmtx' not in font:
-        font['hmtx'] = newTable('hmtx')
-        font['hmtx'].metrics = {}
+    if "glyf" not in font:
+        font["glyf"] = newTable("glyf")
+        font["glyf"].glyphs = {}
+    if "hmtx" not in font:
+        font["hmtx"] = newTable("hmtx")
+        font["hmtx"].metrics = {}
 
     # Initialize the cmap table if needed
-    cmap_tables = [table for table in font['cmap'].tables if table.isUnicode()]
+    cmap_tables = [table for table in font["cmap"].tables if table.isUnicode()]
     if not cmap_tables:
         raise ValueError("Font doesn't have Unicode cmap tables")
 
     # Get x-height if available (to help with vertical positioning)
     x_height = units_per_em * 0.45  # Default math axis position
-    if 'OS/2' in font and hasattr(font['OS/2'], 'sxHeight') and font['OS/2'].sxHeight > 0:
-        x_height = font['OS/2'].sxHeight
+    if (
+        "OS/2" in font
+        and hasattr(font["OS/2"], "sxHeight")
+        and font["OS/2"].sxHeight > 0
+    ):
+        x_height = font["OS/2"].sxHeight
 
     # Process each SVG
-    for svg_file_path, glyph_name, unicode_hex, advance_width, special_x in svg_data_list:
+    for (
+        svg_file_path,
+        glyph_name,
+        unicode_hex,
+        advance_width,
+        special_x,
+    ) in svg_data_list:
         print(f"Processing {svg_file_path} -> {glyph_name} (U+{unicode_hex})")
 
         # Check if the SVG file exists
@@ -113,30 +130,36 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
 
         # Check if this is a combining character (Unicode ranges 0300-036F, 1AB0-1AFF, 1DC0-1DFF, 20D0-20FF, FE20-FE2F)
         unicode_int = int(unicode_hex, 16)
-        is_combining = (0x0300 <= unicode_int <= 0x036F or
-                       0x1AB0 <= unicode_int <= 0x1AFF or
-                       0x1DC0 <= unicode_int <= 0x1DFF or
-                       0x20D0 <= unicode_int <= 0x20FF or
-                       0xFE20 <= unicode_int <= 0xFE2F)
+        is_combining = (
+            0x0300 <= unicode_int <= 0x036F
+            or 0x1AB0 <= unicode_int <= 0x1AFF
+            or 0x1DC0 <= unicode_int <= 0x1DFF
+            or 0x20D0 <= unicode_int <= 0x20FF
+            or 0xFE20 <= unicode_int <= 0xFE2F
+        )
 
         # Determine advance width if not specified
         advance_width = int(units_per_em * advance_width)
 
         # Read the SVG file as bytes to avoid encoding issues
         try:
-            with open(svg_file_path, 'rb') as f:
+            with open(svg_file_path, "rb") as f:
                 svg_data = f.read()
 
             # Convert to string for processing but preserve binary for SVGPath
-            svg_text = svg_data.decode('utf-8', errors='ignore')
+            svg_text = svg_data.decode("utf-8", errors="ignore")
             cleaned_svg = clean_svg_content(svg_text)
 
             # Calculate transformation based on SVG viewBox and desired advance width
-            transform = calculate_transform(svg_text, units_per_em, advance_width, special_x, is_combining)
+            transform = calculate_transform(
+                svg_text, units_per_em, advance_width, special_x, is_combining
+            )
             print(f"Using transform: {transform}")
 
             # Parse the SVG with the transformation
-            svg_path = SVGPath.fromstring(cleaned_svg.encode('utf-8'), transform=transform)
+            svg_path = SVGPath.fromstring(
+                cleaned_svg.encode("utf-8"), transform=transform
+            )
         except Exception as e:
             print(f"Error processing SVG: {e}")
             continue
@@ -147,11 +170,11 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
         glyph = pen.glyph()
 
         # Check if the glyph was created properly
-        if not hasattr(glyph, 'coordinates') or len(glyph.coordinates) == 0:
+        if not hasattr(glyph, "coordinates") or len(glyph.coordinates) == 0:
             print(f"Warning: No points found in glyph for {svg_file_path}")
 
         # Add the glyph to the font
-        font['glyf'][glyph_name] = glyph
+        font["glyf"][glyph_name] = glyph
 
         # Update the glyph order
         glyph_order = font.getGlyphOrder()
@@ -164,16 +187,18 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
             table.cmap[unicode_int] = glyph_name
 
         # Set metrics
-        font['hmtx'][glyph_name] = (advance_width, 0)
+        font["hmtx"][glyph_name] = (advance_width, 0)
 
-        print(f"Added glyph '{glyph_name}' (bounds: {getattr(glyph, 'xMin', 'N/A')},{getattr(glyph, 'yMin', 'N/A')},{getattr(glyph, 'xMax', 'N/A')},{getattr(glyph, 'yMax', 'N/A')}) with advance width {advance_width}")
+        print(
+            f"Added glyph '{glyph_name}' (bounds: {getattr(glyph, 'xMin', 'N/A')},{getattr(glyph, 'yMin', 'N/A')},{getattr(glyph, 'xMax', 'N/A')},{getattr(glyph, 'yMax', 'N/A')}) with advance width {advance_width}"
+        )
 
     # Make sure we save as TTF, not WOFF2
     font.flavor = None
 
     # Update maxp table
-    if 'maxp' in font:
-        font['maxp'].numGlyphs = len(font.getGlyphOrder())
+    if "maxp" in font:
+        font["maxp"].numGlyphs = len(font.getGlyphOrder())
 
     # Set flag to recalculate bounding boxes on save
     font.recalcBBoxes = True
@@ -182,6 +207,7 @@ def add_svg_glyphs_to_font(input_font_path, output_font_path, svg_data_list):
     font.save(output_font_path)
     print(f"Font saved to {output_font_path}")
 
+
 if __name__ == "__main__":
     # Define SVG files, glyph names, Unicode code points, and advance widths
     svg_data_list = [
@@ -189,9 +215,17 @@ if __name__ == "__main__":
         ["element_of_3.svg", "element_of", "2208", 0.6, 0],
         ["new_infinity.svg", "infinity", "221E", 0.6, 0],
         ["new_angle.svg", "angle", "2220", 0.6, 0],
-        ["harpoon.svg", "harpoon", "20D7", 0, 0],  # Combining character - zero advance width
+        [
+            "harpoon.svg",
+            "harpoon",
+            "20D7",
+            0,
+            0,
+        ],  # Combining character - zero advance width
         ["approx.svg", "approx", "2248", 0.6, 0],
         ["to.svg", "to", "2192", 0.66, 0],
+        ["leq.svg", "leq", "2264", 0.2, 0],
+        ["geq.svg", "geq", "2265", 0.2, 0],
     ]
 
     # Run the conversion
