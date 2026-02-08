@@ -227,6 +227,7 @@ if __name__ == "__main__":
         ["leq.svg", "leq", "2264", 0.2, 0],
         ["geq.svg", "geq", "2265", 0.2, 0],
         ["neq.svg", "neq", "2260", 0.4, 0],
+        ["int.svg", "int", "222B", 0.4, 0],
     ]
 
     # Run the conversion
